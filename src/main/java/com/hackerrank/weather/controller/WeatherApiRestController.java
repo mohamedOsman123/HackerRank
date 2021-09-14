@@ -32,7 +32,7 @@ public class WeatherApiRestController {
 
         List<Weather> weatherList = new ArrayList();
 
-        if (date!=null || city!=null || sort!=null) {
+        if (date != null || city != null || sort != null) {
             if (date != null) {
                 for (Weather weather : weathers) {
                     Date databaseDate = weather.getDate();
@@ -50,17 +50,28 @@ public class WeatherApiRestController {
                     }
                 }
             }
-           /* if (sort != null) {
-                if (sort=="date"){
-                    Comparator<Weather> comparator = (w1, w2) -> {
-                        return Long.valueOf(w1.getCreatedOn().getTime()).compareTo(w2.getCreatedOn().getTime());
+            if (sort != null) {
+                if (sort.equalsIgnoreCase("date")) {
+                    Comparator<Weather> ascendingOrder = (w1, w2) -> {
+                        return Long.valueOf(w1.getDate().getTime()).compareTo(w2.getDate().getTime());
                     };
-                    Collections.sort(list, comparator);
-            }*/
-            return ResponseEntity.ok().body(weatherList);
+                    weatherList.addAll(weathers);
+                    Collections.sort(weatherList, ascendingOrder);
+                }
+                 if(sort.equalsIgnoreCase("-date")){
+                    Comparator<Weather> descendingOrder = (w1, w2) -> {
+                        return w1.getDate().compareTo(w2.getDate());
+                    };
+                    weatherList.addAll(weathers);
+                    Collections.sort(weatherList, descendingOrder);
+                }
+
+            }
+                return ResponseEntity.ok().body(weatherList);
+
         }
-        List<Weather> allWeathers = weathers.stream().sorted().collect(Collectors.toList());
-        return ResponseEntity.ok().body(allWeathers);
+            List<Weather> allWeathers = weathers.stream().sorted().collect(Collectors.toList());
+            return ResponseEntity.ok().body(allWeathers);
 
     }
 
