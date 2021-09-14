@@ -1,10 +1,15 @@
 package com.hackerrank.weather.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.Date;
 import java.util.List;
 
 public class Weather {
+
+    @JsonIgnore
     private Integer id;
+
     private Date date;
 
     private Float lat;
