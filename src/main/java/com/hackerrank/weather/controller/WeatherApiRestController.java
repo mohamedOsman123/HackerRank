@@ -27,21 +27,33 @@ public class WeatherApiRestController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Weather>> getWeathers(@RequestParam String date) throws Exception {
+    public ResponseEntity<List<Weather>> getWeathers(@RequestParam String date,@RequestParam String city) throws Exception {
 
-        if (date != null) {
-            for (Weather weather : weathers) {
-                Date databaseDate = weather.getDate();
-                Date newDate = new SimpleDateFormat("YYYY-MM-DD").parse(date);
-                if (newDate.equals(databaseDate)) {
-                    List<Weather> weathers = new ArrayList();
-                    weathers.add(weather);
-                    return ResponseEntity.ok().body(weathers);
+
+        List<Weather> weatherList = new ArrayList();
+
+        if (date!=null || city!=null) {
+            if (date != null) {
+                for (Weather weather : weathers) {
+                    Date databaseDate = weather.getDate();
+                    Date newDate = new SimpleDateFormat("YYYY-MM-DD").parse(date);
+                    if (newDate.equals(databaseDate)) {
+                        weatherList.add(weather);
+                    }
                 }
             }
+            if (city != null) {
+                for (Weather weather : weathers) {
+                    String databaseCity = weather.getCity();
+                    if (city.equalsIgnoreCase(databaseCity)) {
+                        weatherList.add(weather);
+                    }
+                }
+            }
+            return ResponseEntity.ok().body(weatherList);
         }
-        List<Weather> weatherList = weathers.stream().sorted().collect(Collectors.toList());
-        return ResponseEntity.ok().body(weatherList);
+        List<Weather> allWeathers = weathers.stream().sorted().collect(Collectors.toList());
+        return ResponseEntity.ok().body(allWeathers);
 
     }
 }
