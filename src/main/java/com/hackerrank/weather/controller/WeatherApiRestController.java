@@ -27,12 +27,12 @@ public class WeatherApiRestController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Weather>> getWeathers(@RequestParam String date,@RequestParam String city) throws Exception {
+    public ResponseEntity<List<Weather>> getWeathers(@RequestParam String date,@RequestParam String city,@RequestParam String sort) throws Exception {
 
 
         List<Weather> weatherList = new ArrayList();
 
-        if (date!=null || city!=null) {
+        if (date!=null || city!=null || sort!=null) {
             if (date != null) {
                 for (Weather weather : weathers) {
                     Date databaseDate = weather.getDate();
@@ -50,13 +50,34 @@ public class WeatherApiRestController {
                     }
                 }
             }
+           /* if (sort != null) {
+                if (sort=="date"){
+                    Comparator<Weather> comparator = (w1, w2) -> {
+                        return Long.valueOf(w1.getCreatedOn().getTime()).compareTo(w2.getCreatedOn().getTime());
+                    };
+                    Collections.sort(list, comparator);
+            }*/
             return ResponseEntity.ok().body(weatherList);
         }
         List<Weather> allWeathers = weathers.stream().sorted().collect(Collectors.toList());
         return ResponseEntity.ok().body(allWeathers);
 
     }
-}
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getWeatherById(@PathVariable Integer id) {
+
+        for (Weather weather : weathers) {
+            if (weather.getId() == id) {
+                return ResponseEntity.ok().body(weather);
+            }
+            }
+        ResponseEntity responseEntity = new ResponseEntity(HttpStatus.NOT_FOUND);
+        return responseEntity;
+        }
+    }
+
+
 
 
 
