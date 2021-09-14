@@ -1,17 +1,19 @@
 package com.hackerrank.weather.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.hibernate.annotations.Type;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
+import javax.persistence.*;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 @Entity
 public class Weather {
 
-    @JsonIgnore
     @Id
+    @Column(name="id")
+    @GeneratedValue(strategy=GenerationType.IDENTITY)
     private Integer id;
 
     private Date date;
@@ -21,7 +23,11 @@ public class Weather {
     private String city;
     private String state;
 
-    private List<Double> temperatures;
+    @ElementCollection
+    @MapKeyColumn(name = "name")
+    @Column(name = "value")
+    @CollectionTable(name = "jhi_persistent_audit_temp_data", joinColumns=@JoinColumn(name="id"))
+    private List<Double> temperatures=new ArrayList<>();
 
     public Weather(Integer id, Date date, Float lat, Float lon, String city, String state, List<Double> temperatures) {
         this.id = id;
