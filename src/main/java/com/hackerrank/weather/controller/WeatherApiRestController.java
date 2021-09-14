@@ -1,6 +1,8 @@
 package com.hackerrank.weather.controller;
 
 import com.hackerrank.weather.model.Weather;
+import com.hackerrank.weather.repository.WeatherRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,31 +16,30 @@ import java.util.stream.Collectors;
 @RequestMapping(path = "/weather")
 public class WeatherApiRestController {
 
-
-    static List<Weather> weathers = new ArrayList();
+    @Autowired
+    WeatherRepository weatherRepository;
 
     @PostMapping
     public ResponseEntity<Weather> createWeather(@RequestBody Weather weather) {
 
-        Integer uniqueId = new Integer(42);
-        weather.setId(uniqueId);
-        weathers.add(weather);
+        weatherRepository.save(weather);
         return new ResponseEntity<>(weather, HttpStatus.CREATED);
     }
 
     @GetMapping
-    public ResponseEntity<List<Weather>> getWeathers(@RequestParam String date,@RequestParam String city,@RequestParam String sort) throws Exception {
+    public ResponseEntity<List<Weather>> getWeathers(@RequestParam String date, @RequestParam String city, @RequestParam String sort) throws Exception {
 
 
-        List<Weather> weatherList = new ArrayList();
+        List<Weather> weatherList = weatherRepository.findAll();
 
+        List<Weather> weathers = new ArrayList<>();
         if (date != null || city != null || sort != null) {
             if (date != null) {
-                for (Weather weather : weathers) {
+                for (Weather weather : weatherList) {
                     Date databaseDate = weather.getDate();
                     Date newDate = new SimpleDateFormat("YYYY-MM-DD").parse(date);
                     if (newDate.equals(databaseDate)) {
-                        weatherList.add(weather);
+                        weathers.add(weather);
                     }
                 }
             }
@@ -46,7 +47,7 @@ public class WeatherApiRestController {
                 for (Weather weather : weathers) {
                     String databaseCity = weather.getCity();
                     if (city.equalsIgnoreCase(databaseCity)) {
-                        weatherList.add(weather);
+                        weathers.add(weather);
                     }
                 }
             }
@@ -56,37 +57,37 @@ public class WeatherApiRestController {
                         return Long.valueOf(w1.getDate().getTime()).compareTo(w2.getDate().getTime());
                     };
                     weatherList.addAll(weathers);
-                    Collections.sort(weatherList, ascendingOrder);
+                    Collections.sort(weathers, ascendingOrder);
                 }
-                 if(sort.equalsIgnoreCase("-date")){
+                if (sort.equalsIgnoreCase("-date")) {
                     Comparator<Weather> descendingOrder = (w1, w2) -> {
                         return w1.getDate().compareTo(w2.getDate());
                     };
                     weatherList.addAll(weathers);
-                    Collections.sort(weatherList, descendingOrder);
+                    Collections.sort(weathers, descendingOrder);
                 }
 
             }
-                return ResponseEntity.ok().body(weatherList);
+            return ResponseEntity.ok().body(weathers);
 
         }
-            List<Weather> allWeathers = weathers.stream().sorted().collect(Collectors.toList());
-            return ResponseEntity.ok().body(allWeathers);
+        weathers = weatherRepository.findAll(Sort.by(Sort.Direction.ASC, "id"));
+        return ResponseEntity.ok().body(weathers);
 
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getWeatherById(@PathVariable Integer id) {
 
-        for (Weather weather : weathers) {
-            if (weather.getId() == id) {
-                return ResponseEntity.ok().body(weather);
-            }
-            }
-        ResponseEntity responseEntity = new ResponseEntity(HttpStatus.NOT_FOUND);
-        return responseEntity;
+        if (weatherRepository.existsById(id)) {
+            Weather weather = weatherRepository.findById(id).get();
+            return ResponseEntity.ok().body(weather);
+        } else {
+            ResponseEntity responseEntity = new ResponseEntity(HttpStatus.NOT_FOUND);
+            return responseEntity;
         }
     }
+}
 
 
 
