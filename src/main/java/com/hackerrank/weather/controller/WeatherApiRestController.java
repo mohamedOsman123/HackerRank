@@ -2,15 +2,16 @@ package com.hackerrank.weather.controller;
 
 import com.hackerrank.weather.model.Weather;
 import com.hackerrank.weather.repository.WeatherRepository;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(path = "/weather")
@@ -19,60 +20,69 @@ public class WeatherApiRestController {
     @Autowired
     WeatherRepository weatherRepository;
 
-    @PostMapping
-    public ResponseEntity<Weather> createWeather(@RequestBody Weather weather) {
+    @Autowired
+    ModelMapper mapper;
 
-        weatherRepository.save(weather);
-        return new ResponseEntity<>(weather, HttpStatus.CREATED);
+    @Autowired
+    SimpleDateFormat format;
+
+    @PostMapping
+    public ResponseEntity<Weather> createWeather(@RequestBody Weather weather) throws ParseException {
+
+        weather.setId(null);
+        Weather returnedWeather=weatherRepository.save(weather);
+        return new ResponseEntity<>(returnedWeather, HttpStatus.CREATED);
     }
 
     @GetMapping
-    public ResponseEntity<List<Weather>> getWeathers(@RequestParam String date, @RequestParam String city, @RequestParam String sort) throws Exception {
+    public ResponseEntity<List<Weather>> getWeathers(@RequestParam( required = false) String date, @RequestParam( required = false) String city, @RequestParam( required = false) String sort) throws Exception {
 
 
-        List<Weather> weatherList = weatherRepository.findAll();
+        List<Weather> weatherList = weatherRepository.findAll(Sort.by(Sort.Direction.ASC, "id"));
 
         List<Weather> weathers = new ArrayList<>();
         if (date != null || city != null || sort != null) {
             if (date != null) {
                 for (Weather weather : weatherList) {
-                    Date databaseDate = weather.getDate();
-                    Date newDate = new SimpleDateFormat("YYYY-MM-DD").parse(date);
-                    if (newDate.equals(databaseDate)) {
+                    String  databaseDate = weather.getDate().toString();
+                    Date newDatabaseDate = format.parse(databaseDate);
+                    Date newDate = format.parse(date);
+                    if (newDatabaseDate.equals(newDate)) {
                         weathers.add(weather);
                     }
                 }
             }
             if (city != null) {
-                for (Weather weather : weathers) {
-                    String databaseCity = weather.getCity();
-                    if (city.equalsIgnoreCase(databaseCity)) {
-                        weathers.add(weather);
+                List<String> cityList=new ArrayList<>(Arrays.asList(city.split(",")));
+                for (String returnCity : cityList) {
+                    List<Weather> returnedWeathers=weatherRepository.findByCityIgnoreCase(returnCity);
+                    if (!returnedWeathers.isEmpty()) {
+                        weathers.addAll(returnedWeathers);
                     }
                 }
+                Comparator<Weather> idAscendingOrder = (w1, w2) -> {
+                    return Integer.valueOf(w1.getId()).compareTo(w2.getId());
+                };
+                Collections.sort(weathers,idAscendingOrder);
+
             }
             if (sort != null) {
                 if (sort.equalsIgnoreCase("date")) {
-                    Comparator<Weather> ascendingOrder = (w1, w2) -> {
-                        return Long.valueOf(w1.getDate().getTime()).compareTo(w2.getDate().getTime());
-                    };
-                    weatherList.addAll(weathers);
-                    Collections.sort(weathers, ascendingOrder);
+                    weathers=weatherRepository.findAllByOrderByDateAsc();
+
                 }
                 if (sort.equalsIgnoreCase("-date")) {
-                    Comparator<Weather> descendingOrder = (w1, w2) -> {
-                        return w1.getDate().compareTo(w2.getDate());
-                    };
-                    weatherList.addAll(weathers);
-                    Collections.sort(weathers, descendingOrder);
+                    weathers=weatherRepository.findAllByOrderByDateDesc();
                 }
 
             }
             return ResponseEntity.ok().body(weathers);
 
         }
-        weathers = weatherRepository.findAll(Sort.by(Sort.Direction.ASC, "id"));
-        return ResponseEntity.ok().body(weathers);
+        else {
+            weathers = weatherRepository.findAllByOrderByIdAsc();
+            return ResponseEntity.ok().body(weathers);
+        }
 
     }
 

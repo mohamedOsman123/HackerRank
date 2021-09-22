@@ -88,145 +88,145 @@ public class WeatherApiRestControllerTest {
         }
     }
 
-    @Test
-    public void testWeatherEndpointWithGETListAndDateFilter() throws Exception {
-        Date date = simpleDateFormat.parse("2019-03-12");
-        Map<String, Weather> data = getTestData();
-        data.remove("moscow2");
-        List<Weather> expectedRecords = new ArrayList<>();
+          @Test
+           public void testWeatherEndpointWithGETListAndDateFilter() throws Exception {
+               Date date = simpleDateFormat.parse("2019-03-12");
+               Map<String, Weather> data = getTestData();
+               data.remove("moscow2");
+               List<Weather> expectedRecords = new ArrayList<>();
 
-        for (Map.Entry<String, Weather> kv : data.entrySet()) {
-            expectedRecords.add(om.readValue(mockMvc.perform(post("/weather")
+               for (Map.Entry<String, Weather> kv : data.entrySet()) {
+                   expectedRecords.add(om.readValue(mockMvc.perform(post("/weather")
+                           .contentType("application/json")
+                           .content(om.writeValueAsString(kv.getValue())))
+                           .andDo(print())
+                           .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), Weather.class));
+               }
+               expectedRecords = expectedRecords.stream().filter(r -> r.getDate().equals(date)).collect(Collectors.toList());
+
+               List<Weather> actualRecords = om.readValue(mockMvc.perform(get("/weather?date=2019-03-12"))
+                       .andDo(print())
+                       .andExpect(jsonPath("$.*", isA(ArrayList.class)))
+                       .andExpect(jsonPath("$.*", hasSize(expectedRecords.size())))
+                       .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), new TypeReference<List<Weather>>() {
+               });
+
+               for (int i = 0; i < expectedRecords.size(); i++) {
+                   Assert.assertTrue(new ReflectionEquals(expectedRecords.get(i)).matches(actualRecords.get(i)));
+               }
+
+               mockMvc.perform(get("/weather?date=2015-06-06"))
+                       .andDo(print())
+                       .andExpect(jsonPath("$.*", isA(ArrayList.class)))
+                       .andExpect(jsonPath("$.*", hasSize(0)))
+                       .andExpect(status().isOk());
+           }
+
+          @Test
+           public void testWeatherEndpointWithGETListAndCityFilter() throws Exception {
+               List<Weather> originalResponse = new ArrayList<>();
+
+               for (Map.Entry<String, Weather> kv : getTestData().entrySet()) {
+                   originalResponse.add(om.readValue(mockMvc.perform(post("/weather")
+                           .contentType("application/json")
+                           .content(om.writeValueAsString(kv.getValue())))
+                           .andDo(print())
+                           .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), Weather.class));
+               }
+
+               //test single
+               List<Weather> expectedRecords = originalResponse.stream().filter(r -> r.getCity().toLowerCase().equals("moscow")).collect(Collectors.toList());
+               List<Weather> actualRecords = om.readValue(mockMvc.perform(get("/weather?city=moscow"))
+                       .andDo(print())
+                       .andExpect(jsonPath("$.*", isA(ArrayList.class)))
+                       .andExpect(jsonPath("$.*", hasSize(expectedRecords.size())))
+                       .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), new TypeReference<List<Weather>>() {
+               });
+
+              for (int i = 0; i < expectedRecords.size(); i++) {
+                   Assert.assertTrue(new ReflectionEquals(expectedRecords.get(i)).matches(actualRecords.get(i)));
+               }
+
+               //test multiple
+               expectedRecords = originalResponse.stream().filter(r -> ("moscow,London,ChicaGo").toLowerCase().contains(r.getCity().toLowerCase())).collect(Collectors.toList());
+
+               actualRecords = om.readValue(mockMvc.perform(get("/weather?city=moscow,London,ChicaGo"))
+                       .andDo(print())
+                       .andExpect(jsonPath("$.*", isA(ArrayList.class)))
+                       .andExpect(jsonPath("$.*", hasSize(expectedRecords.size())))
+                       .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), new TypeReference<List<Weather>>() {
+               });
+
+               for (int i = 0; i < expectedRecords.size(); i++) {
+                   Assert.assertTrue(new ReflectionEquals(expectedRecords.get(i)).matches(actualRecords.get(i)));
+               }
+
+               //test none
+               mockMvc.perform(get("/weather?city=berlin,amsterdam"))
+                       .andDo(print())
+                       .andExpect(jsonPath("$.*", isA(ArrayList.class)))
+                       .andExpect(jsonPath("$.*", hasSize(0)))
+                       .andExpect(status().isOk());
+
+
+           }
+
+             @Test
+           public void testWeatherEndpointWithGETListAndDateOrder() throws Exception {
+               List<Weather> expectedRecords = new ArrayList<>();
+
+               for (Map.Entry<String, Weather> kv : getTestData().entrySet()) {
+                   expectedRecords.add(om.readValue(mockMvc.perform(post("/weather")
+                           .contentType("application/json")
+                           .content(om.writeValueAsString(kv.getValue())))
+                           .andDo(print())
+                           .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), Weather.class));
+               }
+               Collections.sort(expectedRecords, Comparator.comparing(Weather::getDate).thenComparing(Weather::getId));
+
+               List<Weather> actualRecords = om.readValue(mockMvc.perform(get("/weather?sort=date"))
+                       .andDo(print())
+                       .andExpect(jsonPath("$", isA(ArrayList.class)))
+                       .andExpect(jsonPath("$", hasSize(expectedRecords.size())))
+                       .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), new TypeReference<List<Weather>>() {
+               });
+
+               for (int i = 0; i < expectedRecords.size(); i++) {
+                   Assert.assertTrue(new ReflectionEquals(expectedRecords.get(i)).matches(actualRecords.get(i)));
+               }
+
+               Collections.sort(expectedRecords, Comparator.comparing(Weather::getDate, Comparator.reverseOrder()).thenComparing(Weather::getId));
+
+               actualRecords = om.readValue(mockMvc.perform(get("/weather?sort=-date"))
+                       .andDo(print())
+                       .andExpect(jsonPath("$", isA(ArrayList.class)))
+                       .andExpect(jsonPath("$", hasSize(expectedRecords.size())))
+                       .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), new TypeReference<List<Weather>>() {
+               });
+
+               for (int i = 0; i < expectedRecords.size(); i++) {
+                   Assert.assertTrue(new ReflectionEquals(expectedRecords.get(i)).matches(actualRecords.get(i)));
+               }
+           }
+        @Test
+        public void testWeatherEndpointWithGETById() throws Exception {
+            Weather expectedRecord = om.readValue(mockMvc.perform(post("/weather")
                     .contentType("application/json")
-                    .content(om.writeValueAsString(kv.getValue())))
+                    .content(om.writeValueAsString(getTestData().get("chicago"))))
                     .andDo(print())
-                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), Weather.class));
-        }
-        expectedRecords = expectedRecords.stream().filter(r -> r.getDate().equals(date)).collect(Collectors.toList());
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), Weather.class);
 
-        List<Weather> actualRecords = om.readValue(mockMvc.perform(get("/weather?date=2019-03-12"))
-                .andDo(print())
-                .andExpect(jsonPath("$.*", isA(ArrayList.class)))
-                .andExpect(jsonPath("$.*", hasSize(expectedRecords.size())))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), new TypeReference<List<Weather>>() {
-        });
-
-        for (int i = 0; i < expectedRecords.size(); i++) {
-            Assert.assertTrue(new ReflectionEquals(expectedRecords.get(i)).matches(actualRecords.get(i)));
-        }
-
-        mockMvc.perform(get("/weather?date=2015-06-06"))
-                .andDo(print())
-                .andExpect(jsonPath("$.*", isA(ArrayList.class)))
-                .andExpect(jsonPath("$.*", hasSize(0)))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    public void testWeatherEndpointWithGETListAndCityFilter() throws Exception {
-        List<Weather> originalResponse = new ArrayList<>();
-
-        for (Map.Entry<String, Weather> kv : getTestData().entrySet()) {
-            originalResponse.add(om.readValue(mockMvc.perform(post("/weather")
-                    .contentType("application/json")
-                    .content(om.writeValueAsString(kv.getValue())))
+            Weather actualRecord = om.readValue(mockMvc.perform(get("/weather/" + expectedRecord.getId())
+                    .contentType("application/json"))
                     .andDo(print())
-                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), Weather.class));
-        }
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), Weather.class);
 
-        //test single
-        List<Weather> expectedRecords = originalResponse.stream().filter(r -> r.getCity().toLowerCase().equals("moscow")).collect(Collectors.toList());
-        List<Weather> actualRecords = om.readValue(mockMvc.perform(get("/weather?city=moscow"))
-                .andDo(print())
-                .andExpect(jsonPath("$.*", isA(ArrayList.class)))
-                .andExpect(jsonPath("$.*", hasSize(expectedRecords.size())))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), new TypeReference<List<Weather>>() {
-        });
+            Assert.assertTrue(new ReflectionEquals(expectedRecord).matches(actualRecord));
 
-        for (int i = 0; i < expectedRecords.size(); i++) {
-            Assert.assertTrue(new ReflectionEquals(expectedRecords.get(i)).matches(actualRecords.get(i)));
-        }
-
-        //test multiple
-        expectedRecords = originalResponse.stream().filter(r -> ("moscow,London,ChicaGo").toLowerCase().contains(r.getCity().toLowerCase())).collect(Collectors.toList());
-
-        actualRecords = om.readValue(mockMvc.perform(get("/weather?city=moscow,London,ChicaGo"))
-                .andDo(print())
-                .andExpect(jsonPath("$.*", isA(ArrayList.class)))
-                .andExpect(jsonPath("$.*", hasSize(expectedRecords.size())))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), new TypeReference<List<Weather>>() {
-        });
-
-        for (int i = 0; i < expectedRecords.size(); i++) {
-            Assert.assertTrue(new ReflectionEquals(expectedRecords.get(i)).matches(actualRecords.get(i)));
-        }
-
-        //test none
-        mockMvc.perform(get("/weather?city=berlin,amsterdam"))
-                .andDo(print())
-                .andExpect(jsonPath("$.*", isA(ArrayList.class)))
-                .andExpect(jsonPath("$.*", hasSize(0)))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    public void testWeatherEndpointWithGETListAndDateOrder() throws Exception {
-        List<Weather> expectedRecords = new ArrayList<>();
-
-        for (Map.Entry<String, Weather> kv : getTestData().entrySet()) {
-            expectedRecords.add(om.readValue(mockMvc.perform(post("/weather")
-                    .contentType("application/json")
-                    .content(om.writeValueAsString(kv.getValue())))
+            mockMvc.perform(get("/weather/" + Integer.MAX_VALUE))
                     .andDo(print())
-                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), Weather.class));
+                    .andExpect(status().isNotFound());
         }
-        Collections.sort(expectedRecords, Comparator.comparing(Weather::getDate).thenComparing(Weather::getId));
-
-        List<Weather> actualRecords = om.readValue(mockMvc.perform(get("/weather?sort=date"))
-                .andDo(print())
-                .andExpect(jsonPath("$", isA(ArrayList.class)))
-                .andExpect(jsonPath("$", hasSize(expectedRecords.size())))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), new TypeReference<List<Weather>>() {
-        });
-
-        for (int i = 0; i < expectedRecords.size(); i++) {
-            Assert.assertTrue(new ReflectionEquals(expectedRecords.get(i)).matches(actualRecords.get(i)));
-        }
-
-        Collections.sort(expectedRecords, Comparator.comparing(Weather::getDate, Comparator.reverseOrder()).thenComparing(Weather::getId));
-
-        actualRecords = om.readValue(mockMvc.perform(get("/weather?sort=-date"))
-                .andDo(print())
-                .andExpect(jsonPath("$", isA(ArrayList.class)))
-                .andExpect(jsonPath("$", hasSize(expectedRecords.size())))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), new TypeReference<List<Weather>>() {
-        });
-
-        for (int i = 0; i < expectedRecords.size(); i++) {
-            Assert.assertTrue(new ReflectionEquals(expectedRecords.get(i)).matches(actualRecords.get(i)));
-        }
-    }
-
-    @Test
-    public void testWeatherEndpointWithGETById() throws Exception {
-        Weather expectedRecord = om.readValue(mockMvc.perform(post("/weather")
-                .contentType("application/json")
-                .content(om.writeValueAsString(getTestData().get("chicago"))))
-                .andDo(print())
-                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), Weather.class);
-
-        Weather actualRecord = om.readValue(mockMvc.perform(get("/weather/" + expectedRecord.getId())
-                .contentType("application/json"))
-                .andDo(print())
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString(), Weather.class);
-
-        Assert.assertTrue(new ReflectionEquals(expectedRecord).matches(actualRecord));
-
-        mockMvc.perform(get("/weather/" + Integer.MAX_VALUE))
-                .andDo(print())
-                .andExpect(status().isNotFound());
-    }
-
     private Map<String, Weather> getTestData() throws ParseException {
         Map<String, Weather> data = new LinkedHashMap<>();
 

@@ -1,5 +1,6 @@
 package com.hackerrank.weather.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.hibernate.annotations.Type;
 
@@ -15,9 +16,7 @@ public class Weather {
     @Column(name="id")
     @GeneratedValue(strategy=GenerationType.IDENTITY)
     private Integer id;
-
     private Date date;
-
     private Float lat;
     private Float lon;
     private String city;
